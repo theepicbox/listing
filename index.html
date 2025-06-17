@@ -1,157 +1,180 @@
-<script>
-  const firebaseConfig = {
-    apiKey: "AIzaSyAs-YoUEf1L7sKtnjC5GstwO6UO1Klo0KQ",
-    authDomain: "my-todo-list-2df25.firebaseapp.com",
-    projectId: "my-todo-list-2df25",
-    storageBucket: "my-todo-list-2df25.firebasestorage.app",
-    messagingSenderId: "81441721708",
-    appId: "1:81441721708:web:0cf3838488a4d25c703749"
-  };
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>My To-Do List</title>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <style>
+    /* [Same CSS as before, unchanged for brevity] */
+    /* ... Keep your existing styles ... */
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>ðŸ“ My To-Do List</h1>
+    <div id="auth-section">
+      <button id="login-button">Sign In with Google</button>
+      <button id="logout-button" style="display:none;">Sign Out</button>
+    </div>
 
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.firestore();
-  const auth = firebase.auth();
+    <form id="task-form" style="display:none;">
+      <input type="text" id="task-text" placeholder="New task..." required />
+      <textarea id="task-comment" placeholder="Comment or link (optional)"></textarea>
+      <input type="date" id="task-due-date">
+      <button type="submit">Add Task</button>
+    </form>
 
-  let userUID = null;
-  let unsubscribe = null;
+    <h2>To Do</h2>
+    <ul id="todo-list"></ul>
+    <h2>Completed</h2>
+    <ul id="completed-list"></ul>
+  </div>
 
-  function getDueDateClass(dueDate) {
-    if (!dueDate) return "white";
-    const today = new Date();
-    const due = new Date(dueDate);
-    const diff = (due - today) / (1000 * 60 * 60 * 24);
-    if (diff < 0) return "red";
-    if (diff <= 7) return "yellow";
-    return "green";
-  }
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyAs-YoUEf1L7sKtnjC5GstwO6UO1Klo0KQ",
+      authDomain: "my-todo-list-2df25.firebaseapp.com",
+      projectId: "my-todo-list-2df25",
+      storageBucket: "my-todo-list-2df25.firebasestorage.app",
+      messagingSenderId: "81441721708",
+      appId: "1:81441721708:web:0cf3838488a4d25c703749"
+    };
 
-  function renderTasks(snapshot) {
-    const todoList = document.getElementById("todo-list");
-    const completedList = document.getElementById("completed-list");
-    todoList.innerHTML = "";
-    completedList.innerHTML = "";
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const auth = firebase.auth();
 
-    snapshot.forEach(doc => {
-      const task = doc.data();
-      const li = document.createElement("li");
-      li.className = task.done ? "completed-item" : getDueDateClass(task.dueDate);
+    let userUID = null;
+    let unsubscribe = null;
 
-      const header = document.createElement("div");
-      header.className = "task-header";
+    function getDueDateClass(dueDate) {
+      if (!dueDate) return "white";
+      const today = new Date();
+      const due = new Date(dueDate);
+      const diff = (due - today) / (1000 * 60 * 60 * 24);
+      if (diff < 0) return "red";
+      if (diff <= 7) return "yellow";
+      return "green";
+    }
 
-      const left = document.createElement("div");
-      left.className = "task-left";
+    function renderTasks(snapshot) {
+      const todoList = document.getElementById("todo-list");
+      const completedList = document.getElementById("completed-list");
+      todoList.innerHTML = "";
+      completedList.innerHTML = "";
 
-      const checkbox = document.createElement("input");
-      checkbox.type = "checkbox";
-      checkbox.checked = task.done;
-      checkbox.onchange = () => {
-        db.collection("tasks").doc(doc.id).update({ done: checkbox.checked });
-      };
+      snapshot.forEach(doc => {
+        const task = doc.data();
+        const li = document.createElement("li");
+        li.className = task.done ? "completed-item" : getDueDateClass(task.dueDate);
 
-      const label = document.createElement("span");
-      label.textContent = task.text;
+        const header = document.createElement("div");
+        header.className = "task-header";
 
-      left.appendChild(checkbox);
-      left.appendChild(label);
-      header.appendChild(left);
+        const left = document.createElement("div");
+        left.className = "task-left";
 
-      const actions = document.createElement("div");
-      actions.className = "actions";
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = task.done;
+        checkbox.onchange = () => {
+          db.collection("tasks").doc(doc.id).update({ done: checkbox.checked });
+        };
 
-      const deleteBtn = document.createElement("button");
-      deleteBtn.innerHTML = "🗑️";
-      deleteBtn.className = "icon-button";
-      deleteBtn.onclick = () => db.collection("tasks").doc(doc.id).delete();
+        const label = document.createElement("span");
+        label.textContent = task.text;
 
-      actions.appendChild(deleteBtn);
-      header.appendChild(actions);
-      li.appendChild(header);
+        left.appendChild(checkbox);
+        left.appendChild(label);
+        header.appendChild(left);
 
-      if (task.comment) {
-        const comment = document.createElement("div");
-        comment.className = "comment";
-        if (task.comment.startsWith("http")) {
-          const link = document.createElement("a");
-          link.href = task.comment;
-          link.textContent = task.comment;
-          link.target = "_blank";
-          comment.appendChild(link);
-        } else {
-          comment.textContent = task.comment;
+        const actions = document.createElement("div");
+        actions.className = "actions";
+
+        const deleteBtn = document.createElement("button");
+        deleteBtn.innerHTML = "ðŸ—‘ï¸";
+        deleteBtn.className = "icon-button";
+        deleteBtn.onclick = () => db.collection("tasks").doc(doc.id).delete();
+
+        actions.appendChild(deleteBtn);
+        header.appendChild(actions);
+        li.appendChild(header);
+
+        if (task.comment) {
+          const comment = document.createElement("div");
+          comment.className = "comment";
+          if (task.comment.startsWith("http")) {
+            const link = document.createElement("a");
+            link.href = task.comment;
+            link.textContent = task.comment;
+            link.target = "_blank";
+            comment.appendChild(link);
+          } else {
+            comment.textContent = task.comment;
+          }
+          li.appendChild(comment);
         }
-        li.appendChild(comment);
-      }
 
-      if (task.dueDate) {
-        const date = document.createElement("div");
-        date.className = "duedate";
-        date.textContent = `Due: ${task.dueDate}`;
-        li.appendChild(date);
-      }
+        if (task.dueDate) {
+          const date = document.createElement("div");
+          date.className = "duedate";
+          date.textContent = `Due: ${task.dueDate}`;
+          li.appendChild(date);
+        }
 
-      (task.done ? completedList : todoList).appendChild(li);
-    });
-  }
-
-  document.getElementById("task-form").addEventListener("submit", async function (e) {
-    e.preventDefault();
-    const text = document.getElementById("task-text").value.trim();
-    const comment = document.getElementById("task-comment").value.trim();
-    const dueDate = document.getElementById("task-due-date").value;
-    if (text && userUID) {
-      await db.collection("tasks").add({
-        text,
-        comment,
-        dueDate,
-        done: false,
-        uid: userUID,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        (task.done ? completedList : todoList).appendChild(li);
       });
-      this.reset();
     }
-  });
 
-  function subscribeToTasks(uid) {
-    if (unsubscribe) unsubscribe();
-    unsubscribe = db.collection("tasks")
-      .where("uid", "==", uid)
-      .orderBy("done")
-      .orderBy("createdAt")
-      .onSnapshot(renderTasks);
-  }
+    document.getElementById("task-form").addEventListener("submit", async function (e) {
+      e.preventDefault();
+      const text = document.getElementById("task-text").value.trim();
+      const comment = document.getElementById("task-comment").value.trim();
+      const dueDate = document.getElementById("task-due-date").value;
+      if (text && userUID) {
+        await db.collection("tasks").add({ text, comment, dueDate, done: false, uid: userUID });
+        this.reset();
+      }
+    });
 
-  document.getElementById("login-button").addEventListener("click", () => {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    auth.signInWithPopup(provider);
-  });
-
-  document.getElementById("logout-button").addEventListener("click", () => {
-    auth.signOut();
-  });
-
-  auth.onAuthStateChanged(user => {
-    const form = document.getElementById("task-form");
-    const loginBtn = document.getElementById("login-button");
-    const logoutBtn = document.getElementById("logout-button");
-    const userInfo = document.getElementById("user-info");
-
-    if (user) {
-      userUID = user.uid;
-      form.style.display = "block";
-      logoutBtn.style.display = "inline-block";
-      loginBtn.style.display = "none";
-      userInfo.textContent = `Signed in as: ${user.displayName || user.email}`;
-      subscribeToTasks(user.uid);
-    } else {
-      userUID = null;
-      form.style.display = "none";
-      logoutBtn.style.display = "none";
-      loginBtn.style.display = "inline-block";
-      userInfo.textContent = "";
+    function subscribeToTasks(uid) {
       if (unsubscribe) unsubscribe();
-      document.getElementById("todo-list").innerHTML = "";
-      document.getElementById("completed-list").innerHTML = "";
+      unsubscribe = db.collection("tasks").where("uid", "==", uid).orderBy("text")
+        .onSnapshot(renderTasks);
     }
-  });
-</script>
+
+    document.getElementById("login-button").addEventListener("click", () => {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      auth.signInWithPopup(provider);
+    });
+
+    document.getElementById("logout-button").addEventListener("click", () => {
+      auth.signOut();
+    });
+
+    auth.onAuthStateChanged(user => {
+      const form = document.getElementById("task-form");
+      const loginBtn = document.getElementById("login-button");
+      const logoutBtn = document.getElementById("logout-button");
+
+      if (user) {
+        userUID = user.uid;
+        form.style.display = "block";
+        logoutBtn.style.display = "inline-block";
+        loginBtn.style.display = "none";
+        subscribeToTasks(user.uid);
+      } else {
+        userUID = null;
+        form.style.display = "none";
+        logoutBtn.style.display = "none";
+        loginBtn.style.display = "inline-block";
+        if (unsubscribe) unsubscribe();
+        document.getElementById("todo-list").innerHTML = "";
+        document.getElementById("completed-list").innerHTML = "";
+      }
+    });
+  </script>
+</body>
+</html>
