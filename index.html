@@ -150,77 +150,116 @@
       todoList.innerHTML = "";
       completedList.innerHTML = "";
 
-      snapshot.forEach(doc => {
-        const task = doc.data();
-        const li = document.createElement("li");
-        li.className = task.done ? "completed-item" : getDueDateClass(task.dueDate);
+    snapshot.forEach(doc => {
+      const task = doc.data();
+      const li = document.createElement("li");
+      li.className = task.done ? "completed-item" : getDueDateClass(task.dueDate);
 
-        const header = document.createElement("div");
-        header.className = "task-header";
+      const header = document.createElement("div");
+      header.className = "task-header";
 
-        const left = document.createElement("div");
-        left.className = "task-left";
-
-        const checkbox = document.createElement("input");
-        checkbox.type = "checkbox";
-        checkbox.checked = task.done;
-        checkbox.onchange = () => {
-          db.collection("tasks").doc(doc.id).update({ done: checkbox.checked });
-        };
+      const left = document.createElement("div");
+      left.className = "task-left";
+  
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = task.done;
+      checkbox.onchange = () => {
+        db.collection("tasks").doc(doc.id).update({ done: checkbox.checked });
+       };
 
         const label = document.createElement("span");
         label.textContent = task.text;
-
+        label.style.cursor = "default";
+    
+        const input = document.createElement("input");
+        input.type = "text";
+        input.value = task.text;
+        input.style.display = "none";
+        input.style.flexGrow = 1;
+    
         left.appendChild(checkbox);
         left.appendChild(label);
+        left.appendChild(input);
         header.appendChild(left);
-
+    
         const actions = document.createElement("div");
         actions.className = "actions";
+    
+        const editBtn = document.createElement("button");
+        editBtn.innerHTML = "✏️";
+        editBtn.className = "icon-button";
+    
+        const saveBtn = document.createElement("button");
+        saveBtn.innerHTML = "💾";
+        saveBtn.className = "icon-button";
+        saveBtn.style.display = "none";
+    
+        editBtn.onclick = () => {
+          label.style.display = "none";
+          input.style.display = "inline-block";
+          input.focus();
+          editBtn.style.display = "none";
+          saveBtn.style.display = "inline-block";
+    };
 
-        const deleteBtn = document.createElement("button");
-        deleteBtn.innerHTML = "🗑️";
-        deleteBtn.className = "icon-button";
-        deleteBtn.onclick = () => db.collection("tasks").doc(doc.id).delete();
-
-        actions.appendChild(deleteBtn);
-        header.appendChild(actions);
-        li.appendChild(header);
-
-        if (task.comment) {
-          const comment = document.createElement("div");
-          comment.className = "comment";
-          if (task.comment.startsWith("http")) {
-            const link = document.createElement("a");
-            link.href = task.comment;
-            link.textContent = task.comment;
-            link.target = "_blank";
-            comment.appendChild(link);
-          } else {
-            comment.textContent = task.comment;
-          }
-          li.appendChild(comment);
+      saveBtn.onclick = () => {
+        const newText = input.value.trim();
+        if (newText) {
+          db.collection("tasks").doc(doc.id).update({ text: newText });
         }
-
-        if (task.dueDate) {
-          const date = document.createElement("div");
-          date.className = "duedate";
-          date.textContent = `Due: ${task.dueDate}`;
-          li.appendChild(date);
+        label.textContent = newText;
+        label.style.display = "inline";
+        input.style.display = "none";
+        editBtn.style.display = "inline-block";
+        saveBtn.style.display = "none";
+      };
+  
+      const deleteBtn = document.createElement("button");
+      deleteBtn.innerHTML = "🗑️";
+      deleteBtn.className = "icon-button";
+      deleteBtn.onclick = () => db.collection("tasks").doc(doc.id).delete();
+  
+      actions.appendChild(editBtn);
+      actions.appendChild(saveBtn);
+      actions.appendChild(deleteBtn);
+      header.appendChild(actions);
+      li.appendChild(header);
+  
+      if (task.comment) {
+        const comment = document.createElement("div");
+        comment.className = "comment";
+        if (task.comment.startsWith("http")) {
+          const link = document.createElement("a");
+          link.href = task.comment;
+          link.textContent = task.comment;
+          link.target = "_blank";
+          comment.appendChild(link);
+        } else {
+          comment.textContent = task.comment;
         }
-
-        (task.done ? completedList : todoList).appendChild(li);
-      });
-    }
-
-    document.getElementById("task-form").addEventListener("submit", async function (e) {
-      e.preventDefault();
-      const text = document.getElementById("task-text").value.trim();
-      const comment = document.getElementById("task-comment").value.trim();
-      const dueDate = document.getElementById("task-due-date").value;
-      if (text) {
-        await db.collection("tasks").add({ text, comment, dueDate, done: false });
-        this.reset();
+        li.appendChild(comment);
+      }
+  
+      if (task.dueDate) {
+        const date = document.createElement("div");
+        date.className = "duedate";
+        date.textContent = `Due: ${task.dueDate}`;
+        li.appendChild(date);
+      }
+  
+      (task.done ? completedList : todoList).appendChild(li);
+        });
+      }
+  
+      document.getElementById("task-form").addEventListener("submit", async function (e) {
+        e.preventDefault();
+        const text = document.getElementById("task-text").value.trim();
+        const comment = document.getElementById("task-comment").value.trim();
+        const dueDate = document.getElementById("task-due-date").value;
+        if (text) {
+          await db.collection("tasks").add({ text, comment, dueDate, done: false });
+          this.reset();
       }
     });
 
