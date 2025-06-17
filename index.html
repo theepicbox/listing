@@ -2,105 +2,196 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>My To-Do List</title>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <style>
+    /* Reset and base */
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       font-family: Arial, sans-serif;
       background-color: #001f3f;
       color: white;
       margin: 0;
       padding: 20px;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
     }
 
     .container {
       max-width: 700px;
-      margin: auto;
-      background: #ffffff;
+      width: 100%;
+      background: #fff;
       color: #000;
-      padding: 30px;
-      border-radius: 10px;
-      box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+      padding: 30px 25px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      display: flex;
+      flex-direction: column;
     }
 
     h1, h2 {
       text-align: center;
+      margin-top: 0;
+      margin-bottom: 15px;
+      font-weight: 700;
     }
 
+    /* Auth Section */
     #auth-section {
       display: flex;
+      flex-wrap: wrap;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 20px;
-      flex-wrap: wrap;
+      margin-bottom: 25px;
+      gap: 10px;
     }
 
     #auth-section button {
-      padding: 8px 16px;
-      margin: 5px;
+      padding: 10px 18px;
       border: none;
-      border-radius: 5px;
+      border-radius: 6px;
       cursor: pointer;
+      font-weight: 600;
+      font-size: 1rem;
+      transition: background-color 0.25s ease;
+      min-width: 140px;
+      flex-shrink: 0;
     }
 
     #login-button {
       background-color: #4285F4;
       color: white;
     }
+    #login-button:hover {
+      background-color: #357ae8;
+    }
 
     #logout-button {
       background-color: #d9534f;
       color: white;
     }
+    #logout-button:hover {
+      background-color: #c9302c;
+    }
 
     #user-info {
       flex-grow: 1;
-      padding-left: 10px;
-      font-size: 0.9em;
+      font-size: 1rem;
+      font-weight: 600;
+      color: #333;
+      min-width: 150px;
+      padding-left: 12px;
     }
 
+    /* Form */
     form#task-form {
       display: flex;
       flex-direction: column;
-      gap: 10px;
-      margin-bottom: 20px;
+      gap: 15px;
+      margin-bottom: 30px;
     }
 
-    form#task-form input,
+    form#task-form input[type="text"],
     form#task-form textarea,
-    form#task-form button {
-      padding: 8px;
-      font-size: 1em;
-      border-radius: 5px;
-      border: 1px solid #ccc;
+    form#task-form input[type="date"] {
+      padding: 10px 14px;
+      font-size: 1rem;
+      border-radius: 6px;
+      border: 1.5px solid #ccc;
+      width: 100%;
+      resize: vertical;
+      transition: border-color 0.3s ease;
     }
 
+    form#task-form input[type="text"]:focus,
+    form#task-form textarea:focus,
+    form#task-form input[type="date"]:focus {
+      outline: none;
+      border-color: #4285F4;
+      box-shadow: 0 0 6px rgba(66, 133, 244, 0.6);
+    }
+
+    form#task-form button {
+      align-self: flex-end;
+      padding: 10px 22px;
+      font-weight: 700;
+      font-size: 1rem;
+      background-color: #28a745;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.25s ease;
+      min-width: 110px;
+    }
+
+    form#task-form button:hover {
+      background-color: #218838;
+    }
+
+    /* Task Lists */
     ul {
       list-style: none;
       padding: 0;
+      margin: 0;
     }
 
     li {
       margin-bottom: 15px;
-      padding: 10px;
-      border-radius: 5px;
+      padding: 14px 16px;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      background-color: #f9f9f9;
+      display: flex;
+      flex-direction: column;
+      transition: background-color 0.3s ease;
+      word-break: break-word;
     }
 
+    /* Background colors based on due date */
     .green { background-color: #d4edda; }
     .yellow { background-color: #fffbd0; }
     .red { background-color: #f8d7da; }
-    .white { background-color: white; }
+    .white { background-color: #f0f0f0; }
 
+    /* Task header with checkbox and label */
     .task-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
+      gap: 12px;
     }
 
     .task-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-grow: 1;
+    }
+
+    .task-left input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .task-left span {
+      font-weight: 600;
+      font-size: 1.1rem;
+      user-select: none;
+      word-break: break-word;
+    }
+
+    .actions {
       display: flex;
       align-items: center;
       gap: 10px;
@@ -109,19 +200,72 @@
     .actions .icon-button {
       background: none;
       border: none;
-      font-size: 1.2em;
+      font-size: 1.4rem;
       cursor: pointer;
+      padding: 4px 6px;
+      color: #888;
+      transition: color 0.2s ease;
     }
 
+    .actions .icon-button:hover {
+      color: #d9534f;
+    }
+
+    /* Comments */
     .comment {
+      margin-top: 8px;
       font-style: italic;
-      margin-top: 5px;
+      color: #555;
+      font-size: 0.95rem;
+      word-break: break-word;
     }
 
+    .comment a {
+      color: #4285F4;
+      text-decoration: none;
+    }
+    .comment a:hover {
+      text-decoration: underline;
+    }
+
+    /* Due date text */
     .duedate {
-      margin-top: 5px;
-      font-size: 0.9em;
-      color: #333;
+      margin-top: 6px;
+      font-size: 0.9rem;
+      color: #666;
+      font-weight: 500;
+    }
+
+    /* Responsive tweaks */
+    @media (max-width: 480px) {
+      .container {
+        padding: 20px 15px;
+      }
+
+      #auth-section {
+        justify-content: center;
+        gap: 10px;
+      }
+
+      #user-info {
+        padding-left: 0;
+        text-align: center;
+        flex-basis: 100%;
+        order: 3;
+      }
+
+      #login-button, #logout-button {
+        min-width: 120px;
+        flex-grow: 1;
+      }
+
+      form#task-form button {
+        width: 100%;
+      }
+
+      .task-left span {
+        font-size: 1rem;
+      }
     }
   </style>
 </head>
@@ -136,8 +280,8 @@
 
     <form id="task-form" style="display:none;">
       <input type="text" id="task-text" placeholder="New task..." required />
-      <textarea id="task-comment" placeholder="Comment or link (optional)"></textarea>
-      <input type="date" id="task-due-date">
+      <textarea id="task-comment" placeholder="Comment or link (optional)" rows="2"></textarea>
+      <input type="date" id="task-due-date" />
       <button type="submit">Add Task</button>
     </form>
 
@@ -167,7 +311,7 @@
     function getDueDateClass(dueDate) {
       if (!dueDate) return "white";
       const today = new Date();
-      const due = new Date(dueDate);
+      const due = new Date(dueDate + "T23:59:59"); // end of day
       const diff = (due - today) / (1000 * 60 * 60 * 24);
       if (diff < 0) return "red";
       if (diff <= 7) return "yellow";
@@ -183,11 +327,13 @@
       snapshot.forEach(doc => {
         const task = doc.data();
         const li = document.createElement("li");
-        li.className = task.done ? "completed-item" : getDueDateClass(task.dueDate);
+        li.className = task.done ? "white" : getDueDateClass(task.dueDate);
 
+        // Task header
         const header = document.createElement("div");
         header.className = "task-header";
 
+        // Left side: checkbox + task text
         const left = document.createElement("div");
         left.className = "task-left";
 
@@ -205,18 +351,26 @@
         left.appendChild(label);
         header.appendChild(left);
 
+        // Actions: delete button
         const actions = document.createElement("div");
         actions.className = "actions";
 
         const deleteBtn = document.createElement("button");
         deleteBtn.innerHTML = "🗑️";
         deleteBtn.className = "icon-button";
-        deleteBtn.onclick = () => db.collection("tasks").doc(doc.id).delete();
+        deleteBtn.title = "Delete Task";
+        deleteBtn.onclick = () => {
+          if (confirm("Delete this task?")) {
+            db.collection("tasks").doc(doc.id).delete();
+          }
+        };
 
         actions.appendChild(deleteBtn);
         header.appendChild(actions);
+
         li.appendChild(header);
 
+        // Optional comment/link
         if (task.comment) {
           const comment = document.createElement("div");
           comment.className = "comment";
@@ -225,6 +379,7 @@
             link.href = task.comment;
             link.textContent = task.comment;
             link.target = "_blank";
+            link.rel = "noopener noreferrer";
             comment.appendChild(link);
           } else {
             comment.textContent = task.comment;
@@ -232,6 +387,7 @@
           li.appendChild(comment);
         }
 
+        // Due date display
         if (task.dueDate) {
           const date = document.createElement("div");
           date.className = "duedate";
@@ -239,6 +395,7 @@
           li.appendChild(date);
         }
 
+        // Append to correct list
         (task.done ? completedList : todoList).appendChild(li);
       });
     }
@@ -256,13 +413,17 @@
 
     function subscribeToTasks(uid) {
       if (unsubscribe) unsubscribe();
-      unsubscribe = db.collection("tasks").where("uid", "==", uid).orderBy("text")
+      unsubscribe = db.collection("tasks")
+        .where("uid", "==", uid)
+        .orderBy("done")
+        .orderBy("dueDate")
+        .orderBy("text")
         .onSnapshot(renderTasks);
     }
 
     document.getElementById("login-button").addEventListener("click", () => {
       const provider = new firebase.auth.GoogleAuthProvider();
-      auth.signInWithPopup(provider);
+      auth.signInWithPopup(provider).catch(console.error);
     });
 
     document.getElementById("logout-button").addEventListener("click", () => {
@@ -277,7 +438,7 @@
 
       if (user) {
         userUID = user.uid;
-        form.style.display = "block";
+        form.style.display = "flex";
         logoutBtn.style.display = "inline-block";
         loginBtn.style.display = "none";
         userInfo.textContent = `Signed in as: ${user.displayName || user.email}`;
