@@ -4,7 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>My To-Do List</title>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <style>
+    /* Styles unchanged */
     body {
       font-family: sans-serif;
       background-color: #0a1a3d;
@@ -16,7 +19,6 @@
       align-items: flex-start;
       min-height: 100vh;
     }
-
     .container {
       max-width: 600px;
       margin-top: 3rem;
@@ -26,16 +28,13 @@
       box-shadow: 0 4px 10px rgba(0,0,0,0.3);
       width: 90%;
     }
-
     h1, h2 {
       text-align: center;
     }
-
     ul {
       list-style: none;
       padding: 0;
     }
-
     li {
       background: #2f3f66;
       padding: 0.8rem 1rem;
@@ -45,56 +44,46 @@
       flex-direction: column;
       transition: background 0.3s ease;
     }
-
     .task-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
     }
-
     .task-left {
       display: flex;
       align-items: center;
     }
-
     .actions {
       display: flex;
       gap: 0.5rem;
     }
-
     input[type="checkbox"] {
       margin-right: 1rem;
       transform: scale(1.2);
       cursor: pointer;
     }
-
     .completed-item {
       text-decoration: line-through;
       opacity: 0.6;
     }
-
     .comment {
       margin-left: 1.8rem;
       font-size: 0.9rem;
       color: #ccc;
     }
-
     .duedate {
       font-size: 0.9rem;
       margin-left: 1.8rem;
     }
-
     a {
       color: #8ecfff;
     }
-
     form {
       display: flex;
       flex-direction: column;
       gap: 0.5rem;
       margin-bottom: 1rem;
     }
-
     input[type="text"], textarea, input[type="date"] {
       padding: 0.5rem;
       border: none;
@@ -102,7 +91,6 @@
       font-size: 1rem;
       width: 100%;
     }
-
     button {
       background-color: #4ea3f1;
       color: white;
@@ -113,7 +101,6 @@
       font-size: 1rem;
       width: fit-content;
     }
-
     .icon-button {
       background: none;
       border: none;
@@ -121,20 +108,17 @@
       cursor: pointer;
       font-size: 1.2rem;
     }
-
     .icon-button:hover {
       color: #fff;
     }
-
     .edit-inputs {
       margin-top: 0.5rem;
       display: flex;
       flex-direction: column;
       gap: 0.5rem;
     }
-
     .green { background-color: #285e29; }
-    .yellow { background-color: #a28500; }
+    .yellow { background-color: #fff9b3; }
     .red { background-color: #7a2a2a; }
     .white { background-color: #2f3f66; }
   </style>
@@ -155,11 +139,18 @@
   </div>
 
   <script>
-    let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+    const firebaseConfig = {
+      apiKey: "AIzaSyAs-YoUEf1L7sKtnjC5GstwO6UO1Klo0KQ",
+      authDomain: "my-todo-list-2df25.firebaseapp.com",
+      projectId: "my-todo-list-2df25",
+      storageBucket: "my-todo-list-2df25.firebasestorage.app",
+      messagingSenderId: "81441721708",
+      appId: "1:81441721708:web:0cf3838488a4d25c703749"
+    };
 
-    function saveTasks() {
-      localStorage.setItem("tasks", JSON.stringify(tasks));
-    }
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const tasksRef = db.collection("tasks");
 
     function getDueDateClass(dueDate) {
       if (!dueDate) return "white";
@@ -171,27 +162,16 @@
       return "green";
     }
 
-    function renderTasks() {
+    function renderTasks(snapshot) {
       const todoList = document.getElementById("todo-list");
       const completedList = document.getElementById("completed-list");
       todoList.innerHTML = "";
       completedList.innerHTML = "";
 
-      tasks.forEach((task, index) => {
+      snapshot.forEach(doc => {
+        const task = doc.data();
         const li = document.createElement("li");
         li.className = task.done ? "completed-item" : getDueDateClass(task.dueDate);
-        li.draggable = true;
-
-        li.ondragstart = (e) => e.dataTransfer.setData("text/plain", index);
-        li.ondragover = (e) => e.preventDefault();
-        li.ondrop = (e) => {
-          e.preventDefault();
-          const fromIndex = e.dataTransfer.getData("text/plain");
-          const [movedTask] = tasks.splice(fromIndex, 1);
-          tasks.splice(index, 0, movedTask);
-          saveTasks();
-          renderTasks();
-        };
 
         const header = document.createElement("div");
         header.className = "task-header";
@@ -203,9 +183,7 @@
         checkbox.type = "checkbox";
         checkbox.checked = task.done;
         checkbox.onchange = () => {
-          task.done = !task.done;
-          saveTasks();
-          renderTasks();
+          tasksRef.doc(doc.id).update({ done: checkbox.checked });
         };
 
         const label = document.createElement("span");
@@ -218,21 +196,11 @@
         const actions = document.createElement("div");
         actions.className = "actions";
 
-        const editBtn = document.createElement("button");
-        editBtn.innerHTML = "✏️";
-        editBtn.className = "icon-button";
-        editBtn.onclick = () => showEditForm(index, li);
-
         const deleteBtn = document.createElement("button");
         deleteBtn.innerHTML = "🗑️";
         deleteBtn.className = "icon-button";
-        deleteBtn.onclick = () => {
-          tasks.splice(index, 1);
-          saveTasks();
-          renderTasks();
-        };
+        deleteBtn.onclick = () => tasksRef.doc(doc.id).delete();
 
-        actions.appendChild(editBtn);
         actions.appendChild(deleteBtn);
         header.appendChild(actions);
         li.appendChild(header);
@@ -263,55 +231,18 @@
       });
     }
 
-    function showEditForm(index, li) {
-      const task = tasks[index];
-      li.innerHTML = "";
-
-      const editDiv = document.createElement("div");
-      editDiv.className = "edit-inputs";
-
-      const textInput = document.createElement("input");
-      textInput.type = "text";
-      textInput.value = task.text;
-
-      const commentInput = document.createElement("textarea");
-      commentInput.value = task.comment;
-
-      const dateInput = document.createElement("input");
-      dateInput.type = "date";
-      dateInput.value = task.dueDate || "";
-
-      const saveBtn = document.createElement("button");
-      saveBtn.textContent = "Save";
-      saveBtn.onclick = () => {
-        task.text = textInput.value.trim();
-        task.comment = commentInput.value.trim();
-        task.dueDate = dateInput.value;
-        saveTasks();
-        renderTasks();
-      };
-
-      editDiv.appendChild(textInput);
-      editDiv.appendChild(commentInput);
-      editDiv.appendChild(dateInput);
-      editDiv.appendChild(saveBtn);
-      li.appendChild(editDiv);
-    }
-
-    document.getElementById("task-form").addEventListener("submit", function (e) {
+    document.getElementById("task-form").addEventListener("submit", async function (e) {
       e.preventDefault();
       const text = document.getElementById("task-text").value.trim();
       const comment = document.getElementById("task-comment").value.trim();
       const dueDate = document.getElementById("task-due-date").value;
       if (text) {
-        tasks.push({ text, comment, dueDate, done: false });
-        saveTasks();
-        renderTasks();
+        await tasksRef.add({ text, comment, dueDate, done: false });
         this.reset();
       }
     });
 
-    renderTasks();
+    tasksRef.orderBy("text").onSnapshot(renderTasks);
   </script>
 </body>
 </html>
