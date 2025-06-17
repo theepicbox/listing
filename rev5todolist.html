@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>My To-Do List</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background-color: #0a1a3d;
+      color: white;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 600px;
+      margin-top: 3rem;
+      padding: 2rem;
+      background-color: #1c2a4d;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+      width: 90%;
+    }
+
+    h1, h2 {
+      text-align: center;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    li {
+      background: #2f3f66;
+      padding: 0.8rem 1rem;
+      margin-bottom: 0.8rem;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      transition: background 0.3s ease;
+    }
+
+    .task-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .task-left {
+      display: flex;
+      align-items: center;
+    }
+
+    .actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    input[type="checkbox"] {
+      margin-right: 1rem;
+      transform: scale(1.2);
+      cursor: pointer;
+    }
+
+    .completed-item {
+      text-decoration: line-through;
+      opacity: 0.6;
+    }
+
+    .comment {
+      margin-left: 1.8rem;
+      font-size: 0.9rem;
+      color: #ccc;
+    }
+
+    .duedate {
+      font-size: 0.9rem;
+      margin-left: 1.8rem;
+    }
+
+    a {
+      color: #8ecfff;
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    input[type="text"], textarea, input[type="date"] {
+      padding: 0.5rem;
+      border: none;
+      border-radius: 6px;
+      font-size: 1rem;
+      width: 100%;
+    }
+
+    button {
+      background-color: #4ea3f1;
+      color: white;
+      border: none;
+      padding: 0.6rem 1rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 1rem;
+      width: fit-content;
+    }
+
+    .icon-button {
+      background: none;
+      border: none;
+      color: #ccc;
+      cursor: pointer;
+      font-size: 1.2rem;
+    }
+
+    .icon-button:hover {
+      color: #fff;
+    }
+
+    .edit-inputs {
+      margin-top: 0.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .green { background-color: #285e29; }
+    .yellow { background-color: #a28500; }
+    .red { background-color: #7a2a2a; }
+    .white { background-color: #2f3f66; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📝 My To-Do List</h1>
+    <form id="task-form">
+      <input type="text" id="task-text" placeholder="New task..." required />
+      <textarea id="task-comment" placeholder="Comment or link (optional)"></textarea>
+      <input type="date" id="task-due-date">
+      <button type="submit">Add Task</button>
+    </form>
+    <h2>To Do</h2>
+    <ul id="todo-list"></ul>
+    <h2>Completed</h2>
+    <ul id="completed-list"></ul>
+  </div>
+
+  <script>
+    let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+
+    function saveTasks() {
+      localStorage.setItem("tasks", JSON.stringify(tasks));
+    }
+
+    function getDueDateClass(dueDate) {
+      if (!dueDate) return "white";
+      const today = new Date();
+      const due = new Date(dueDate);
+      const diff = (due - today) / (1000 * 60 * 60 * 24);
+      if (diff < 0) return "red";
+      if (diff <= 7) return "yellow";
+      return "green";
+    }
+
+    function renderTasks() {
+      const todoList = document.getElementById("todo-list");
+      const completedList = document.getElementById("completed-list");
+      todoList.innerHTML = "";
+      completedList.innerHTML = "";
+
+      tasks.forEach((task, index) => {
+        const li = document.createElement("li");
+        li.className = task.done ? "completed-item" : getDueDateClass(task.dueDate);
+        li.draggable = true;
+
+        li.ondragstart = (e) => e.dataTransfer.setData("text/plain", index);
+        li.ondragover = (e) => e.preventDefault();
+        li.ondrop = (e) => {
+          e.preventDefault();
+          const fromIndex = e.dataTransfer.getData("text/plain");
+          const [movedTask] = tasks.splice(fromIndex, 1);
+          tasks.splice(index, 0, movedTask);
+          saveTasks();
+          renderTasks();
+        };
+
+        const header = document.createElement("div");
+        header.className = "task-header";
+
+        const left = document.createElement("div");
+        left.className = "task-left";
+
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = task.done;
+        checkbox.onchange = () => {
+          task.done = !task.done;
+          saveTasks();
+          renderTasks();
+        };
+
+        const label = document.createElement("span");
+        label.textContent = task.text;
+
+        left.appendChild(checkbox);
+        left.appendChild(label);
+        header.appendChild(left);
+
+        const actions = document.createElement("div");
+        actions.className = "actions";
+
+        const editBtn = document.createElement("button");
+        editBtn.innerHTML = "✏️";
+        editBtn.className = "icon-button";
+        editBtn.onclick = () => showEditForm(index, li);
+
+        const deleteBtn = document.createElement("button");
+        deleteBtn.innerHTML = "🗑️";
+        deleteBtn.className = "icon-button";
+        deleteBtn.onclick = () => {
+          tasks.splice(index, 1);
+          saveTasks();
+          renderTasks();
+        };
+
+        actions.appendChild(editBtn);
+        actions.appendChild(deleteBtn);
+        header.appendChild(actions);
+        li.appendChild(header);
+
+        if (task.comment) {
+          const comment = document.createElement("div");
+          comment.className = "comment";
+          if (task.comment.startsWith("http")) {
+            const link = document.createElement("a");
+            link.href = task.comment;
+            link.textContent = task.comment;
+            link.target = "_blank";
+            comment.appendChild(link);
+          } else {
+            comment.textContent = task.comment;
+          }
+          li.appendChild(comment);
+        }
+
+        if (task.dueDate) {
+          const date = document.createElement("div");
+          date.className = "duedate";
+          date.textContent = `Due: ${task.dueDate}`;
+          li.appendChild(date);
+        }
+
+        (task.done ? completedList : todoList).appendChild(li);
+      });
+    }
+
+    function showEditForm(index, li) {
+      const task = tasks[index];
+      li.innerHTML = "";
+
+      const editDiv = document.createElement("div");
+      editDiv.className = "edit-inputs";
+
+      const textInput = document.createElement("input");
+      textInput.type = "text";
+      textInput.value = task.text;
+
+      const commentInput = document.createElement("textarea");
+      commentInput.value = task.comment;
+
+      const dateInput = document.createElement("input");
+      dateInput.type = "date";
+      dateInput.value = task.dueDate || "";
+
+      const saveBtn = document.createElement("button");
+      saveBtn.textContent = "Save";
+      saveBtn.onclick = () => {
+        task.text = textInput.value.trim();
+        task.comment = commentInput.value.trim();
+        task.dueDate = dateInput.value;
+        saveTasks();
+        renderTasks();
+      };
+
+      editDiv.appendChild(textInput);
+      editDiv.appendChild(commentInput);
+      editDiv.appendChild(dateInput);
+      editDiv.appendChild(saveBtn);
+      li.appendChild(editDiv);
+    }
+
+    document.getElementById("task-form").addEventListener("submit", function (e) {
+      e.preventDefault();
+      const text = document.getElementById("task-text").value.trim();
+      const comment = document.getElementById("task-comment").value.trim();
+      const dueDate = document.getElementById("task-due-date").value;
+      if (text) {
+        tasks.push({ text, comment, dueDate, done: false });
+        saveTasks();
+        renderTasks();
+        this.reset();
+      }
+    });
+
+    renderTasks();
+  </script>
+</body>
+</html>
